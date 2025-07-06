@@ -134,7 +134,11 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    if (req.headers.origin != 'https://med-aplus.com') {
+    console.log(req.headers.origin);
+    if (
+      req.headers.origin != 'https://med-aplus.com' &&
+      req.headers.origin != 'https://med-aplus.com/'
+    ) {
       return res.status(403).send('Forbidden');
     }
 
@@ -161,7 +165,10 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    if (req.headers.origin != 'https://med-aplus.com') {
+    if (
+      req.headers.origin != 'https://med-aplus.com' &&
+      req.headers.origin != 'https://med-aplus.com/'
+    ) {
       return res.status(403).send('Forbidden');
     }
     const keyBuffer = await this.videoService.getKey(videoId);
