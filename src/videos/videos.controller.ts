@@ -136,8 +136,9 @@ export class VideoController {
   ) {
     console.log(req.headers.origin);
     if (
-      req.headers.origin != 'https://med-aplus.com' &&
-      req.headers.origin != 'https://med-aplus.com/'
+      req.headers.host != 'med-aplus.com' &&
+      req.headers['sec-fetch-site'] != 'same-origin' &&
+      req.headers.referer?.includes('https://med-aplus.com')
     ) {
       return res.status(403).send('Forbidden');
     }
@@ -166,8 +167,9 @@ export class VideoController {
     @Req() req: Request,
   ) {
     if (
-      req.headers.origin != 'https://med-aplus.com' &&
-      req.headers.origin != 'https://med-aplus.com/'
+      req.headers.host != 'med-aplus.com' &&
+      req.headers['sec-fetch-site'] != 'same-origin' &&
+      req.headers.referer?.includes('https://med-aplus.com')
     ) {
       return res.status(403).send('Forbidden');
     }
