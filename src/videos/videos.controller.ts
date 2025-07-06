@@ -134,7 +134,7 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    if (req.headers.origin != 'https://localhost:3001') {
+    if (req.headers.origin != 'https://med-aplus.com') {
       return res.status(403).send('Forbidden');
     }
 
@@ -161,7 +161,7 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    if (req.headers.origin != 'https://localhost:3001') {
+    if (req.headers.origin != 'https://med-aplus.com') {
       return res.status(403).send('Forbidden');
     }
     const keyBuffer = await this.videoService.getKey(videoId);
