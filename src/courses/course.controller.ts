@@ -13,6 +13,7 @@ import {
   BadRequestException,
   Query,
   DefaultValuePipe,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -34,6 +35,7 @@ import {
 import { response } from '../utils/response';
 import { extname } from 'path';
 import { userPayload } from 'src/decorators/user.decorators';
+import { CoursesGuard } from 'src/guards/courses.guards';
 
 @ApiTags('Courses')
 @Controller('courses')
@@ -83,6 +85,7 @@ export class CourseController {
   }
 
   @Public()
+  @UseGuards(CoursesGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Get course by ID' })
   @ApiResponse({
@@ -93,9 +96,18 @@ export class CourseController {
     status: 404,
     description: 'Course not found',
   })
-  async findCourseById(@Param('id', ParseIntPipe) id: number) {
+  async findCourseById(
+    @Param('id', ParseIntPipe) id: number,
+    @userPayload() userData: IPayload,
+  ) {
+    const isEnrolled = userData.id
+      ? await this.courseService.isUserEnrolled(userData.id, id)
+      : false;
     const course = await this.courseService.findCourseById(id);
-    return response('Course retrieved successfully', course);
+    return response('Course retrieved successfully', {
+      course,
+      isEnrolled,
+    });
   }
 
   @Public()

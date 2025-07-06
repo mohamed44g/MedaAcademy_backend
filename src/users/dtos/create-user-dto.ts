@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   MinLength,
   IsInt,
+  IsOptional,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -41,4 +42,14 @@ export class CreateUserDto {
   @IsNotEmpty()
   @MinLength(8)
   password: string;
+
+  @ApiProperty({ description: 'Fingerprint', example: 'device_token' })
+  @IsString()
+  @IsNotEmpty()
+  fingerprint: string;
+
+  @ApiProperty({ description: 'Verification code', example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  verificationCode: string;
 }

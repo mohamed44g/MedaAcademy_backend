@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import * as sanitizeHtml from 'sanitize-html';
+
 
 export class CreateCommentDto {
   @ApiProperty({
@@ -19,6 +19,5 @@ export class CreateCommentDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => sanitizeHtml(value))
   content: string;
 }

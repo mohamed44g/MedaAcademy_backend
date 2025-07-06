@@ -13,6 +13,7 @@ import { CourseModel } from 'src/courses/course.model';
 import { WorkshopModel } from 'src/workshops/workshops.model';
 import { ChapterModel } from 'src/chapters/chapters.model';
 import { VideoModel } from 'src/videos/videos.model';
+import { MongoService } from 'src/database/mongo.service';
 
 @Module({
   controllers: [AdminController],
@@ -30,6 +31,7 @@ import { VideoModel } from 'src/videos/videos.model';
     WorkshopModel,
     ChapterModel,
     VideoModel,
+    MongoService,
   ],
   exports: [AdminService, AdminModel],
 })

@@ -9,6 +9,9 @@ import {
   ParseIntPipe,
   Request,
   Query,
+  Session,
+  BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dtos/create-user-dto';
@@ -27,6 +30,8 @@ import { User } from './users.model';
 import { userPayload } from 'src/decorators/user.decorators';
 import { response } from 'src/utils/response';
 import { DepositUserWalletBalanceDto } from './dtos/user-deposit-dto';
+import { VerifyDto } from './dtos/verify-dto';
+0;
 
 @ApiTags('Users')
 @Controller('users')
@@ -42,7 +47,7 @@ export class UserController {
     type: Object,
   })
   @ApiResponse({ status: 400, description: 'Invalid input' })
-  async register(@Body() dto: CreateUserDto) {
+  async register(@Body() dto: CreateUserDto, @Req() req: CustomRequest) {
     const user = await this.userService.register(dto);
     return response('User registered successfully', user);
   }
@@ -52,10 +57,21 @@ export class UserController {
   @ApiOperation({ summary: 'User login' })
   @ApiResponse({ status: 200, description: 'Login successful', type: Object })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() dto: LoginDto, @Request() req: CustomRequest) {
-    const deviceToken = req.headers?.['device-token'] || 'unknown-device';
-    const user = await this.userService.login(dto, deviceToken as string);
+  async login(@Body() dto: LoginDto) {
+    const deviceToken = dto.fingerprint;
+    const user = await this.userService.login(dto, deviceToken);
     return response('User logged in successfully', user);
+  }
+
+  //verfcation user buy send a otp code his gmail
+  @Public()
+  @Post('verify')
+  @ApiOperation({ summary: 'Verify user' })
+  @ApiResponse({ status: 200, description: 'User verified', type: Object })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  async verifyUser(@Body() dto: VerifyDto) {
+    const code = await this.userService.verifyUser(dto);
+    return response('User verified successfully', code);
   }
 
   //deposit user wallet balanace by super admin

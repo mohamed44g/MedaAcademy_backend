@@ -11,7 +11,7 @@ import { CommentsModule } from './comments/comments.module';
 import { WorkshopsModule } from './workshops/workshops.module';
 import { AdminModule } from './admin/admin.module';
 import { InstructorsModule } from './instructor/instructors.module';
-
+import { MongoService } from './database/mongo.service';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -34,6 +34,6 @@ import { InstructorsModule } from './instructor/instructors.module';
     AdminModule,
     InstructorsModule,
   ],
-  providers: [DatabaseService],
+  providers: [DatabaseService, MongoService],
 })
 export class AppModule {}

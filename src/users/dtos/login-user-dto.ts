@@ -20,4 +20,9 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @ApiProperty({ description: 'Fingerprint', example: 'device_token' })
+  @IsString()
+  @IsNotEmpty()
+  fingerprint: string;
 }

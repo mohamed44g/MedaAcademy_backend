@@ -3,6 +3,8 @@ import {
   UnauthorizedException,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { UserModel, User } from './users.model';
 import { CreateUserDto } from './dtos/create-user-dto';
@@ -13,6 +15,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Role, IPayload } from '../utils/types';
 import { DepositUserWalletBalanceDto } from './dtos/user-deposit-dto';
+import { compareFingerprints } from 'src/utils/compareFingerPrint';
+import { VerifyDto } from './dtos/verify-dto';
+import { generateVerificationCode } from 'src/utils/generateCode';
+import { MailerService } from '@nestjs-modules/mailer';
+import { MongoService } from 'src/database/mongo.service';
 
 @Injectable()
 export class UserService {
@@ -20,14 +27,36 @@ export class UserService {
     private userModel: UserModel,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailerService: MailerService,
+    private readonly mongoService: MongoService,
   ) {}
 
+  public async sendVerificationCode(
+    email: string,
+    code: string,
+  ): Promise<void> {
+    await this.mailerService.sendMail({
+      to: email,
+      from: 'Med A+ Academy <medaplus56@gmail.com>',
+      subject: 'Testing Nest Mailermodule with template ✔',
+      html: 'هذا كود التحقق من حسابك ' + code,
+    });
+  }
+
   async register(dto: CreateUserDto): Promise<User> {
+    const storedCode = await this.mongoService.getVerificationCode(dto.email);
+    if (dto.verificationCode !== storedCode) {
+      throw new BadRequestException('رمز التحقق غير صحيح.');
+    }
+    const user = await this.userModel.findUserByEmail(dto.email, dto.phone);
+    if (user) {
+      throw new BadRequestException('الايميل او رقم الهاتف مستخدم من قبل');
+    }
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     return this.userModel.createUser({
       ...dto,
       password: hashedPassword,
-      role: Role.user, // Default role for new users
+      role: Role.user,
     });
   }
 
@@ -37,17 +66,40 @@ export class UserService {
   ): Promise<{ token: string; user: User }> {
     const user = await this.userModel.findUserByEmail(dto.email);
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('الايميل او كلمة السر غير صحيحة');
     }
 
-    // Check device limit
-    const sessionCount = await this.userModel.getUserSessionCount(user.id);
-    if (sessionCount >= 2) {
-      await this.userModel.removeOldestSession(user.id);
+    // Get user sessions
+    const userSessions = await this.userModel.getUserSessions(user.id);
+
+    // Safeguard for unexpected case where no sessions exist
+    if (userSessions.length === 0) {
+      throw new InternalServerErrorException(
+        'خطأ في قاعدة البيانات: لا توجد جلسات مسجلة للمستخدم.',
+      );
     }
 
-    // Add new session
-    await this.userModel.addUserSession(user.id, deviceToken);
+    // Check for a matching session
+    let isMatch = false;
+    for (const session of userSessions) {
+      if (
+        (await compareFingerprints(session.device_token, deviceToken)) >= 80
+      ) {
+        isMatch = true;
+        break;
+      }
+    }
+
+    // If no match, handle based on session count
+    if (!isMatch) {
+      if (userSessions.length === 1) {
+        await this.userModel.addUserSession(user.id, deviceToken);
+      } else if (userSessions.length >= 2) {
+        throw new BadRequestException(
+          'وصلت للحد الاقصى من الاجهزة لا يمكنك الدخول من جهاز اخر.',
+        );
+      }
+    }
 
     // Generate JWT
     const payload: IPayload = {
@@ -61,6 +113,13 @@ export class UserService {
     });
 
     return { token, user };
+  }
+
+  async verifyUser(dto: VerifyDto): Promise<boolean> {
+    const verificationCode = generateVerificationCode();
+    await this.sendVerificationCode(dto.email, verificationCode);
+    await this.mongoService.storeVerificationCode(dto.email, verificationCode);
+    return true;
   }
 
   async depositUserWalletBalance(
@@ -105,6 +164,7 @@ export class UserService {
   async updateUserRole(id: number, role: Role): Promise<User | null> {
     return this.userModel.updateUserRole(id, role);
   }
+  role;
 
   async updateUserStatus(
     id: number,

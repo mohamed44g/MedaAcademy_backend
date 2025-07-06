@@ -2,6 +2,7 @@ import { Request } from 'express';
 
 export interface CustomRequest extends Request {
   user?: IPayload;
+  session: any;
 }
 
 export interface IPayload {

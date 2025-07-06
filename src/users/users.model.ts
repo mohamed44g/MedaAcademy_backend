@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { Role } from '../utils/types';
 import { DepositUserWalletBalanceDto } from './dtos/user-deposit-dto';
+import { CreateUserDto } from './dtos/create-user-dto';
 
 export interface User {
   id: number;
@@ -18,27 +19,38 @@ export interface User {
 export class UserModel {
   constructor(private dbService: DatabaseService) {}
 
-  async createUser(user: Omit<User, 'id' | 'created_at'>): Promise<User> {
-    const query = `
+  async createUser(user: any): Promise<any> {
+    await this.dbService.transaction(async (client) => {
+      const query = `
       INSERT INTO users (name, email, phone, specialty_id, password, role)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
-    const values = [
-      user.name,
-      user.email,
-      user.phone,
-      user.specialty_id,
-      user.password,
-      user.role,
-    ];
-    const result = await this.dbService.query(query, values);
-    return result[0];
+      const values = [
+        user.name,
+        user.email,
+        user.phone,
+        user.specialty_id,
+        user.password,
+        user.role,
+      ];
+
+      const result = await this.dbService.query(query, values);
+      result[0];
+
+      await client.query(
+        `INSERT INTO user_sessions (user_id, device_token) VALUES ($1, $2);`,
+        [result[0].id, user.fingerprint],
+      );
+
+      return result[0];
+    });
   }
 
-  async findUserByEmail(email: string): Promise<User | null> {
-    const query = 'SELECT * FROM users WHERE email = $1;';
-    const result = await this.dbService.query(query, [email]);
+  async findUserByEmail(email: string, phone?: string): Promise<User | null> {
+    const query =
+      'SELECT id,password,email,role FROM users WHERE email = $1 OR phone = $2;';
+    const result = await this.dbService.query(query, [email, phone]);
     return result[0] || null;
   }
 
@@ -176,21 +188,19 @@ export class UserModel {
     await this.dbService.query(query, [user_id, device_token]);
   }
 
-  async getUserSessionCount(user_id: number): Promise<number> {
-    const query = 'SELECT COUNT(*) FROM user_sessions WHERE user_id = $1;';
+  async getUserSessions(user_id: number): Promise<any> {
+    const query = 'SELECT device_token FROM user_sessions WHERE user_id = $1;';
     const result = await this.dbService.query(query, [user_id]);
-    return parseInt(result[0].count, 10);
+    return result;
   }
 
-  async removeOldestSession(user_id: number): Promise<void> {
+  async addSession(user_id: number, device_token: string): Promise<void> {
     const query = `
-      DELETE FROM user_sessions
-      WHERE id = (
-        SELECT id FROM user_sessions WHERE user_id = $1
-        ORDER BY created_at ASC LIMIT 1
-      );
+      INSERT INTO user_sessions (user_id, device_token)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, device_token) DO NOTHING;
     `;
-    await this.dbService.query(query, [user_id]);
+    await this.dbService.query(query, [user_id, device_token]);
   }
 
   async findAllUsers(): Promise<User[]> {
