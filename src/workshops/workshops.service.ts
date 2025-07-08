@@ -18,7 +18,10 @@ export class WorkshopService {
     return this.workshopModel.createWorkshop(dto, posterPath);
   }
 
-  async findAllWorkshops(page: number, limit: number): Promise<{ data: Workshop[]; total: number }> {
+  async findAllWorkshops(
+    page: number,
+    limit: number,
+  ): Promise<{ data: Workshop[]; total: number }> {
     return this.workshopModel.findAllWorkshops(page, limit);
   }
 
@@ -61,11 +64,7 @@ export class WorkshopService {
     const workshopExists =
       await this.workshopModel.validateWorkshopId(workshopId);
     if (!workshopExists) {
-      throw new NotFoundException('Workshop not found');
-    }
-    const userExists = await this.workshopModel.validateUserId(userId);
-    if (!userExists) {
-      throw new BadRequestException('Invalid or banned user');
+      throw new NotFoundException('ورشة عمل غير موجودة');
     }
     await this.workshopModel.registerUserForWorkshop(userId, workshopId);
   }
@@ -82,7 +81,7 @@ export class WorkshopService {
   async findUserRegistrations(userId: number): Promise<Workshop[]> {
     const userExists = await this.workshopModel.validateUserId(userId);
     if (!userExists) {
-      throw new BadRequestException('Invalid or banned user');
+      throw new BadRequestException('المستخدم مش موجود.');
     }
     return this.workshopModel.findUserRegistrations(userId);
   }

@@ -24,12 +24,7 @@ import { MongoService } from 'src/database/mongo.service';
     }),
   ],
   controllers: [UserController],
-  providers: [
-    MongoService,
-    UserService,
-    UserModel,
-    DatabaseService,
-  ],
+  providers: [MongoService, UserService, UserModel, DatabaseService],
   exports: [UserService, UserModel],
 })
 export class UsersModule {}

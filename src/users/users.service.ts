@@ -72,27 +72,26 @@ export class UserService {
     // Get user sessions
     const userSessions = await this.userModel.getUserSessions(user.id);
 
-    // Safeguard for unexpected case where no sessions exist
-    if (userSessions.length === 0) {
-      throw new InternalServerErrorException(
-        'خطأ في قاعدة البيانات: لا توجد جلسات مسجلة للمستخدم.',
-      );
-    }
-
     // Check for a matching session
     let isMatch = false;
     for (const session of userSessions) {
       if (
-        (await compareFingerprints(session.device_token, deviceToken)) >= 80
+        (await compareFingerprints(session.device_token, deviceToken)) >= 75
       ) {
         isMatch = true;
         break;
       }
     }
 
+    console.log(
+      'userSessions.length is:',
+      userSessions.length,
+      'and match is :',
+      isMatch,
+    );
     // If no match, handle based on session count
     if (!isMatch) {
-      if (userSessions.length === 1) {
+      if (userSessions.length != 2) {
         await this.userModel.addUserSession(user.id, deviceToken);
       } else if (userSessions.length >= 2) {
         throw new BadRequestException(

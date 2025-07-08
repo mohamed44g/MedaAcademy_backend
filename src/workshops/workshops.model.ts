@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 
 export interface Workshop {
@@ -87,12 +91,70 @@ export class WorkshopModel {
     userId: number,
     workshopId: number,
   ): Promise<void> {
-    const query = `
-      INSERT INTO workshop_registrations (user_id, workshop_id)
-      VALUES ($1, $2)
-      ON CONFLICT DO NOTHING;
-    `;
-    await this.dbService.query(query, [userId, workshopId]);
+    //make buy course transaction
+    await this.dbService.transaction(async (client) => {
+      // Check if user is already enrolled
+      const isEnrolledQuery = `
+        SELECT 1
+        FROM workshop_registrations
+        WHERE user_id = $1 AND workshop_id = $2;
+      `;
+      const isEnrolledResult = await client.query(isEnrolledQuery, [
+        userId,
+        workshopId,
+      ]);
+      if (isEnrolledResult.rows.length > 0) {
+        throw new BadRequestException('المستخدم بالفعل مسجل في هذه الورشة');
+      }
+
+      // Get course price and title
+      const courseQuery = `
+        SELECT price, title
+        FROM workshops
+        WHERE id = $1;
+      `;
+      const courseResult = await client.query(courseQuery, [workshopId]);
+      if (!courseResult.rows.length) {
+        throw new NotFoundException('الورشة غير موجودة');
+      }
+
+      const { price: workshopPrice, title: workshopTitle } =
+        courseResult.rows[0];
+
+      // Check user balance
+      const userQuery = `
+        SELECT wallet_balance
+        FROM users
+        WHERE id = $1;
+      `;
+      const userResult = await client.query(userQuery, [userId]);
+      if (!userResult.rows.length) {
+        throw new NotFoundException('المستخدم غير موجود');
+      }
+
+      const walletBalance = userResult.rows[0].wallet_balance;
+      if (walletBalance < workshopPrice) {
+        throw new BadRequestException('لا يوجد رصيد كافى فى المحفظة');
+      }
+
+      // Update user balance
+      await client.query(
+        'UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2',
+        [workshopPrice, userId],
+      );
+
+      // Record wallet transaction
+      await client.query(
+        'INSERT INTO wallet_transactions (user_id, amount, description, type) VALUES ($1, $2, $3, $4)',
+        [userId, workshopPrice, `Buy workshop ${workshopTitle}`, 'withdraw'],
+      );
+
+      // Enroll user in course
+      await client.query(
+        'INSERT INTO workshop_registrations (user_id, workshop_id) VALUES ($1, $2)',
+        [userId, workshopId],
+      );
+    });
   }
 
   async findRegistrationsByWorkshopId(workshopId: number): Promise<any[]> {
@@ -124,8 +186,8 @@ export class WorkshopModel {
   }
 
   async validateUserId(id: number): Promise<boolean> {
-    const query = 'SELECT 1 FROM users WHERE id = $1 AND status = $2;';
-    const result = await this.dbService.query(query, [id, 'active']);
+    const query = 'SELECT 1 FROM users WHERE id = $1';
+    const result = await this.dbService.query(query, [id]);
     return result.length > 0;
   }
 }

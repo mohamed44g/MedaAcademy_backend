@@ -190,7 +190,7 @@ export class WorkshopController {
     return response('Workshop deleted successfully', null);
   }
 
-  @Post(':id/register')
+  @Post(':id/enroll')
   @ApiOperation({ summary: 'Register user for a workshop' })
   @ApiResponse({ status: 200, description: 'User registered successfully' })
   @ApiResponse({ status: 404, description: 'Workshop not found' })
@@ -221,7 +221,8 @@ export class WorkshopController {
     return response('Registered users retrieved successfully', registrations);
   }
 
-  @Get('my-registrations')
+  @Roles(Role.admin, Role.super_admin, Role.user)
+  @Get('/registrations')
   @ApiOperation({ summary: 'Get user’s registered workshops' })
   @ApiResponse({
     status: 200,

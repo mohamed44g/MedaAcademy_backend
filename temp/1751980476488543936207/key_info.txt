@@ -1,0 +1,2 @@
+http://localhost:3000/api/videos/key-request?videoId=1751980476488543936207
+D:\Projects\web\nestJs\med_a+_academy\temp\1751980476488543936207\video-key-1751980476488-77815470.bin

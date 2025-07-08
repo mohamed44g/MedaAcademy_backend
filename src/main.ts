@@ -30,8 +30,8 @@ async function bootstrap() {
     }),
   );
 
-  const mongoService = app.get(MongoService);
-  await mongoService.ensureTTLIndex();
+  // const mongoService = app.get(MongoService);
+  // await mongoService.ensureTTLIndex();
 
   // Enable security headers
   app.use(helmet());

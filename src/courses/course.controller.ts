@@ -43,6 +43,7 @@ export class CourseController {
   constructor(private courseService: CourseService) {}
 
   @Public()
+  @UseGuards(CoursesGuard)
   @Get()
   @ApiOperation({ summary: 'Get all courses' })
   @ApiResponse({
@@ -54,20 +55,24 @@ export class CourseController {
   async findAllCourses(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 6,
+    @userPayload() userData: IPayload,
   ) {
-    const courses = await this.courseService.findAllCourses(page, limit);
+    const id = userData ? userData.id : 0;
+    const courses = await this.courseService.findAllCourses(page, limit, id);
     return response('Courses retrieved successfully', courses);
   }
 
   @Public()
+  @UseGuards(CoursesGuard)
   @Get('latest')
   @ApiOperation({ summary: 'Get latest courses' })
   @ApiResponse({
     status: 200,
     description: 'Latest courses retrieved successfully',
   })
-  async getLatestCourses() {
-    const courses = await this.courseService.getLatestCourses();
+  async getLatestCourses(@userPayload() userData: IPayload) {
+    const id = userData ? userData.id : 0;
+    const courses = await this.courseService.getLatestCourses(id);
     return response('Latest courses retrieved successfully', courses);
   }
 
@@ -111,6 +116,7 @@ export class CourseController {
   }
 
   @Public()
+  @UseGuards(CoursesGuard)
   @Get('instructor/:instructorId')
   @ApiOperation({ summary: 'Get courses by instructor ID with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -119,12 +125,15 @@ export class CourseController {
   async getCoursesByInstructorId(
     @Param('instructorId', ParseIntPipe) instructorId: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @userPayload() userData: IPayload,
   ) {
+    const id = userData ? userData.id : 0;
     const limit = 6;
     const result = await this.courseService.getCoursesByInstructorId(
       instructorId,
       page,
       limit,
+      id,
     );
     return response('Courses retrieved successfully', result);
   }

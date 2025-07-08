@@ -107,6 +107,7 @@ export class CourseModel {
     instructorId: number,
     page: number = 1,
     limit: number = 10,
+    userId: any,
   ): Promise<{
     courses: any[];
     pagination: {
@@ -125,25 +126,20 @@ export class CourseModel {
       c.id,
       c.title,
       c.description,
+      c.specialty_id,
       c.poster,
       c.price,
-      COALESCE(SUM(v.duration), 0) as duration,
-      COUNT(DISTINCT v.id) as videos_count,
-      COUNT(DISTINCT uc.user_id) as students_count,
-      ARRAY_AGG(cat.name) FILTER (WHERE cat.name IS NOT NULL) as speciality
+      CASE WHEN uc.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_enrolled,
+      ARRAY_AGG(s.name) FILTER (WHERE s.name IS NOT NULL) AS speciality
     FROM courses c
-    LEFT JOIN chapters ch ON c.id = ch.course_id
-    LEFT JOIN videos v ON ch.id = v.chapter_id
-    LEFT JOIN user_courses uc ON c.id = uc.course_id
-    LEFT JOIN course_categories cc ON c.id = cc.course_id
-    LEFT JOIN categories cat ON cc.category_id = cat.id
+    LEFT JOIN user_courses uc ON c.id = uc.course_id AND uc.user_id = $4
+    LEFT JOIN specialties s ON c.specialty_id = s.id
     WHERE c.instructor_id = $1
-    GROUP BY c.id, c.title, c.description, c.poster, c.price
+    GROUP BY c.id, c.title, c.description, c.specialty_id, c.poster, c.price, uc.user_id
     ORDER BY c.created_at DESC
     LIMIT $2 OFFSET $3
-  `;
-    const values = [instructorId, limit, offset];
-
+`;
+    const values = [instructorId, limit, offset, userId];
     const courses = await this.dbService.query(query, values);
 
     // Query to get total count of courses for pagination
@@ -162,9 +158,7 @@ export class CourseModel {
       description: course.description,
       poster: course.poster,
       price: course.price,
-      duration: `${Math.round(course.duration / 3600)} ساعة`,
-      videosCount: parseInt(course.videos_count, 10),
-      studentsCount: parseInt(course.students_count, 10),
+      isenrolled: course.is_enrolled,
       speciality: course.speciality || [],
     }));
 
@@ -189,21 +183,73 @@ export class CourseModel {
   async findAllCourses(
     page: number,
     limit: number,
+    userId: number,
   ): Promise<{ data: Course[]; total: number }> {
     const offset = (page - 1) * limit;
     const totalQuery = 'SELECT COUNT(*) FROM courses;';
     const totalResult = await this.dbService.query(totalQuery);
     const total = totalResult[0].count;
-    const query =
-      'SELECT courses.*, specialties.name as specialty_name, instructors.name as instractor_name FROM courses JOIN specialties ON courses.specialty_id = specialties.id JOIN instructors ON courses.instructor_id = instructors.id LIMIT $1 OFFSET $2;';
-    const result = await this.dbService.query(query, [limit, offset]);
-    return { data: result, total };
+    const query = `
+    SELECT 
+      c.*,
+      CASE WHEN uc.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_enrolled,
+      ARRAY_AGG(s.name) FILTER (WHERE s.name IS NOT NULL) AS speciality
+    FROM courses c
+    LEFT JOIN user_courses uc ON c.id = uc.course_id AND uc.user_id = $1
+    LEFT JOIN instructors ON c.instructor_id = instructors.id
+    LEFT JOIN specialties s ON c.specialty_id = s.id
+    GROUP BY c.id, c.title, c.description, c.specialty_id, c.poster, c.price, uc.user_id
+    ORDER BY c.created_at DESC
+    LIMIT $2 OFFSET $3
+`;
+
+    const courses = await this.dbService.query(query, [userId, limit, offset]);
+    const formattedCourses = courses.map((course: any) => ({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      poster: course.poster,
+      instructor: course.instractor_name,
+      price: course.price,
+      isenrolled: course.is_enrolled,
+      speciality: course.speciality || [],
+    }));
+    console.log('formattedCourses', formattedCourses);
+    return { data: formattedCourses, total };
   }
 
-  async getLatestCourses(): Promise<any> {
-    const query =
-      'SELECT courses.*, specialties.name as specialty_name , instructors.name as instractor_name FROM courses JOIN specialties ON courses.specialty_id = specialties.id JOIN instructors ON courses.instructor_id = instructors.id ORDER BY created_at DESC LIMIT 6;';
-    return await this.dbService.query(query, []);
+  async getLatestCourses(userId: number): Promise<any> {
+    const query = `
+    SELECT 
+      c.id,
+      c.title,
+      c.description,
+      c.specialty_id,
+      c.poster,
+      c.price,
+      CASE WHEN uc.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_enrolled,
+      ARRAY_AGG(s.name) FILTER (WHERE s.name IS NOT NULL) AS speciality
+    FROM courses c
+    LEFT JOIN user_courses uc ON c.id = uc.course_id AND uc.user_id = $1
+    LEFT JOIN specialties s ON c.specialty_id = s.id
+    GROUP BY c.id, c.title, c.description, c.specialty_id, c.poster, c.price, uc.user_id
+    ORDER BY c.created_at DESC
+    LIMIT 6
+`;
+
+    const courses = await this.dbService.query(query, [userId]);
+
+    const formattedCourses = courses.map((course: any) => ({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      poster: course.poster,
+      price: course.price,
+      isenrolled: course.is_enrolled,
+      speciality: course.speciality || [],
+    }));
+
+    return formattedCourses;
   }
 
   async findCourseById(courseId: number): Promise<CourseOverview> {

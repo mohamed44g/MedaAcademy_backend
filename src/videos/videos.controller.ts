@@ -39,6 +39,8 @@ import { Response, Request } from 'express';
 import { SkipTransform } from 'src/decorators/transform.decorator';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { config } from 'dotenv';
+config();
 @ApiTags('Videos')
 @Controller('/videos')
 export class VideoController {
@@ -134,11 +136,12 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    console.log(req.headers.origin);
+    const host = process.env.host;
+    const backendUrl = process.env.backend_Url;
     if (
-      req.headers.host != 'med-aplus.com' &&
+      req.headers.host != host &&
       req.headers['sec-fetch-site'] != 'same-origin' &&
-      req.headers.referer?.includes('https://med-aplus.com')
+      req.headers.referer?.includes(backendUrl ? backendUrl : '')
     ) {
       return res.status(403).send('Forbidden');
     }
@@ -166,10 +169,12 @@ export class VideoController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
+    const host = process.env.host;
+    const backendUrl = process.env.backend_Url;
     if (
-      req.headers.host != 'med-aplus.com' &&
+      req.headers.host != host &&
       req.headers['sec-fetch-site'] != 'same-origin' &&
-      req.headers.referer?.includes('https://med-aplus.com')
+      req.headers.referer?.includes(backendUrl ? backendUrl : '')
     ) {
       return res.status(403).send('Forbidden');
     }

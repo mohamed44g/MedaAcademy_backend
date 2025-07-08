@@ -33,12 +33,13 @@ export class CourseService {
   async findAllCourses(
     page: number,
     limit: number,
+    userId: number,
   ): Promise<{ data: Course[]; total: number }> {
-    return this.courseModel.findAllCourses(page, limit);
+    return this.courseModel.findAllCourses(page, limit, userId);
   }
 
-  async getLatestCourses(): Promise<any> {
-    return this.courseModel.getLatestCourses();
+  async getLatestCourses(userId: number): Promise<any> {
+    return this.courseModel.getLatestCourses(userId);
   }
 
   async findCourseById(id: number): Promise<CourseOverview> {
@@ -53,8 +54,14 @@ export class CourseService {
     instructorId: number,
     page: number = 1,
     limit: number = 10,
+    userId: any,
   ): Promise<any> {
-    return this.courseModel.getCoursesByInstructorId(instructorId, page, limit);
+    return this.courseModel.getCoursesByInstructorId(
+      instructorId,
+      page,
+      limit,
+      userId,
+    );
   }
 
   async findCourseContent(

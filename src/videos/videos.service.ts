@@ -21,6 +21,8 @@ import { generateEncryptionKey } from './generate-key';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from 'src/database/database.service';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { config } from 'dotenv';
+config();
 
 const execAsync = promisify(exec);
 @Injectable()
@@ -188,7 +190,8 @@ export class VideoService {
     const inputPath = file.path;
     const playlistPath = join(outputDir, 'playlist.m3u8');
     const segmentPattern = join(outputDir, 'segment_%03d.ts');
-    const hlsBaseUrl = `https://med-aplus.com/api/videos/segment?videoId=${identifier}&segment=`;
+    const backendUrl = process.env.backend_Url;
+    const hlsBaseUrl = `${backendUrl}/videos/segment?videoId=${identifier}&segment=`;
     const ffmpegCommand = `ffmpeg -i "${inputPath}" -hls_time 30 -hls_key_info_file "${keyInfoPath}" -hls_segment_filename "${segmentPattern}" -hls_base_url "${hlsBaseUrl}" -hls_playlist_type vod "${playlistPath}"`;
 
     try {
@@ -209,7 +212,7 @@ export class VideoService {
 
     // Fix URLs by replacing any local paths
     playlistContent = playlistContent.replace(
-      /https:\/\/med-aplus.com\/api\/videos\/segment\/[^?]+\/[^?]+(?=segment_\d+\.ts)/g,
+      /https:\/\/localhost:3000\/api\/videos\/segment\/[^?]+\/[^?]+(?=segment_\d+\.ts)/g,
       hlsBaseUrl,
     );
     this.logger.log(`Fixed playlist content:\n${playlistContent}`);
