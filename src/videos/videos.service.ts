@@ -212,7 +212,7 @@ export class VideoService {
 
     // Fix URLs by replacing any local paths
     playlistContent = playlistContent.replace(
-      /https:\/\/localhost:3000\/api\/videos\/segment\/[^?]+\/[^?]+(?=segment_\d+\.ts)/g,
+      /https:\/\/meda-plus.com\/api\/videos\/segment\/[^?]+\/[^?]+(?=segment_\d+\.ts)/g,
       hlsBaseUrl,
     );
     this.logger.log(`Fixed playlist content:\n${playlistContent}`);

@@ -44,8 +44,8 @@ async function bootstrap() {
       'https://localhost:3000',
       'http://localhost:3001',
       'https://localhost:3001',
-      'https://meda-plus.com',
-      'https://www.meda-plus.com',
+      'https://med-aplus.com',
+      'https://www.med-aplus.com'
     ],
     credentials: true,
   });
