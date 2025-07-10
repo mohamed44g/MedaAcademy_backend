@@ -20,6 +20,9 @@ import { VerifyDto } from './dtos/verify-dto';
 import { generateVerificationCode } from 'src/utils/generateCode';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MongoService } from 'src/database/mongo.service';
+import { UpdateUserPasswordDto } from './dtos/update-user-password-dto';
+import { ForgetPasswordDto } from './dtos/forget-password-dto';
+import { ResetPasswordDto } from './dtos/reset-password-dto';
 
 @Injectable()
 export class UserService {
@@ -63,7 +66,7 @@ export class UserService {
   async login(
     dto: LoginDto,
     deviceToken: string,
-  ): Promise<{ token: string; user: User }> {
+  ): Promise<{ token: string; refreshToken: string; user: User }> {
     const user = await this.userModel.findUserByEmail(dto.email);
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('الايميل او كلمة السر غير صحيحة');
@@ -83,12 +86,6 @@ export class UserService {
       }
     }
 
-    console.log(
-      'userSessions.length is:',
-      userSessions.length,
-      'and match is :',
-      isMatch,
-    );
     // If no match, handle based on session count
     if (!isMatch) {
       if (userSessions.length != 2) {
@@ -110,8 +107,12 @@ export class UserService {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: '1d',
     });
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: '7d',
+    });
 
-    return { token, user };
+    return { token, refreshToken, user };
   }
 
   async verifyUser(dto: VerifyDto): Promise<boolean> {
@@ -163,12 +164,89 @@ export class UserService {
   async updateUserRole(id: number, role: Role): Promise<User | null> {
     return this.userModel.updateUserRole(id, role);
   }
-  role;
 
   async updateUserStatus(
     id: number,
     status: 'active' | 'banned',
   ): Promise<User | null> {
     return this.userModel.updateUserStatus(id, status);
+  }
+
+  async updateUserPassword(
+    id: number,
+    dto: UpdateUserPasswordDto,
+  ): Promise<boolean> {
+    if (dto.password === dto.oldPassword) {
+      throw new BadRequestException(
+        'كلمة المرور الجديدة يجب أن تكون مختلفة عن كلمة المرور الحالية',
+      );
+    }
+
+    const user = await this.userModel.getUserPasswordById(id);
+    if (!user) {
+      throw new NotFoundException('المستخدم غير موجود.');
+    }
+
+    //compare old password
+    const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!isMatch) {
+      throw new BadRequestException('كلمة المرور القديمة غير صحيحة.');
+    }
+
+    const password = await bcrypt.hash(dto.password, 10);
+    return this.userModel.updateUserPassword(id, password);
+  }
+
+  //make with token send to user email and redirect to reset password page
+  async forgetPassword(dto: ForgetPasswordDto): Promise<boolean> {
+    const user = await this.userModel.findUserByEmail(dto.email);
+    if (!user) {
+      throw new NotFoundException('المستخدم غير موجود.');
+    }
+    const token = this.jwtService.sign(
+      { id: user.id, email: user.email },
+      {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: '1h',
+      },
+    );
+    await this.mailerService.sendMail({
+      to: user.email,
+      from: 'Med A+ Academy <medaplus56@gmail.com>',
+      subject: 'Reset Password',
+      text: 'Reset Password ',
+      html: `the link to reset your password is : ${process.env.FRONTEND_URL}/reset-password?token=${token} valid for 1 hour`,
+    });
+    return true;
+  }
+
+  async resetPassword(dto: ResetPasswordDto, token: string): Promise<boolean> {
+    const payload = this.jwtService.decode(token);
+    if (!payload) {
+      throw new UnauthorizedException('التوكن غير صحيح أو انتهت صلاحيته');
+    }
+    const user = await this.userModel.getUserById(payload.id);
+    if (!user) {
+      throw new NotFoundException('المستخدم غير موجود.');
+    }
+    const password = await bcrypt.hash(dto.password, 10);
+    return this.userModel.updateUserPassword(payload.id, password);
+  }
+
+  async refreshToken(token: string): Promise<string> {
+    console.log(token);
+    const payload = this.jwtService.decode(token);
+    if (!payload) {
+      throw new UnauthorizedException('التوكن غير صحيح أو انتهت صلاحيته');
+    }
+    // generate new token
+    const accessToken = this.jwtService.sign(
+      { id: payload.id, email: payload.email },
+      {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: '1d',
+      },
+    );
+    return accessToken;
   }
 }

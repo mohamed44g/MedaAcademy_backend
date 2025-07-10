@@ -236,4 +236,21 @@ export class UserModel {
     const result = await this.dbService.query(query, [status, id]);
     return result[0] || null;
   }
+
+  async updateUserPassword(id: number, password: string): Promise<boolean> {
+    const query = `
+      UPDATE users
+      SET password = $1
+      WHERE id = $2;
+    `;
+    await this.dbService.query(query, [password, id]);
+    return true;
+  }
+
+  // get user password by id
+  async getUserPasswordById(id: number): Promise<User | null> {
+    const query = 'SELECT password FROM users WHERE id = $1;';
+    const result = await this.dbService.query(query, [id]);
+    return result[0] || null;
+  }
 }
