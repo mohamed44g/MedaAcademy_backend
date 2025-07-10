@@ -1,3 +1,5 @@
+import fuzz from 'fuzzball';
+
 /**
  * Compares two device fingerprints and returns a similarity score
  * @param fingerprint1 First fingerprint to compare
@@ -6,26 +8,37 @@
  */
 export async function compareFingerprints(
   fingerprint1: string,
-  fingerprint2: string
+  fingerprint2: string,
 ): Promise<number> {
-  if (fingerprint1 === "unknown-device" || fingerprint2 === "unknown-device") {
+  // If either fingerprint is the unknown device, return 0% match
+  if (fingerprint1 === 'unknown-device' || fingerprint2 === 'unknown-device') {
     return 0;
   }
 
+  // If fingerprints are exactly the same, return 100%
   if (fingerprint1 === fingerprint2) {
     return 100;
   }
 
   try {
-    const fuzz = await import("fuzzball");
+    // Import fuzzball dynamically to avoid server-side issues
+
+    // Calculate similarity using fuzzball's token_sort_ratio
+    // This handles cases where the same information might be in a different order
     const similarity = fuzz.token_sort_ratio(fingerprint1, fingerprint2);
+
+    // Return the similarity score (0-100)
     return Math.round(similarity);
   } catch (error) {
-    console.error("Error comparing fingerprints:", error);
+    console.error('Error comparing fingerprints:', error);
+
+    // Fallback to a simple character-based comparison if fuzzball fails
     const maxLength = Math.max(fingerprint1.length, fingerprint2.length);
     if (maxLength === 0) return 0;
+
     const distance = levenshteinDistance(fingerprint1, fingerprint2);
     const similarity = Math.max(0, 100 - (distance / maxLength) * 100);
+
     return Math.round(similarity);
   }
 }
@@ -59,8 +72,8 @@ function levenshteinDistance(a: string, b: string) {
           matrix[i - 1][j - 1] + 1, // substitution
           Math.min(
             matrix[i][j - 1] + 1, // insertion
-            matrix[i - 1][j] + 1 // deletion
-          )
+            matrix[i - 1][j] + 1, // deletion
+          ),
         );
       }
     }
