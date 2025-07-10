@@ -63,12 +63,12 @@ export class UserController {
   async login(@Body() dto: LoginDto, @Res() res: Response) {
     const deviceToken = dto.fingerprint;
     const user = await this.userService.login(dto, deviceToken);
-    res.cookie("refreshToken", user.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // res.cookie("refreshToken", user.refreshToken, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: "none",
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    // });
     return response("تم تسجيل الدخول بنجاح", user);
   }
 
@@ -197,6 +197,7 @@ export class UserController {
   @ApiBearerAuth()
   async getUser(@userPayload() userData: IPayload, @Req() req: any) {
     const refreshToken = req.cookies.refreshToken;
+    console.log(refreshToken);
     const user = await this.userService.getUserById(userData.id);
     return response("تم استرجاع المستخدم بنجاح", user);
   }
