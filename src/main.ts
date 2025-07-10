@@ -7,6 +7,7 @@ import { RolesGuard } from './guards/auth.role.guards';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import * as cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import helmet from 'helmet';
 import { resolve } from 'path';
@@ -20,6 +21,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['log', 'error', 'warn', 'fatal', 'debug', 'verbose'],
   });
+
+  app.use(cookieParser());
 
   // Enable global validation pipe for DTOs
   app.useGlobalPipes(

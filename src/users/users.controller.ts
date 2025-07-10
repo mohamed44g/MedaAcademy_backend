@@ -12,6 +12,7 @@ import {
   Session,
   BadRequestException,
   Req,
+  Put,
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dtos/create-user-dto';
@@ -31,7 +32,9 @@ import { userPayload } from 'src/decorators/user.decorators';
 import { response } from 'src/utils/response';
 import { DepositUserWalletBalanceDto } from './dtos/user-deposit-dto';
 import { VerifyDto } from './dtos/verify-dto';
-0;
+import { UpdateUserPasswordDto } from './dtos/update-user-password-dto';
+import { ForgetPasswordDto } from './dtos/forget-password-dto';
+import { ResetPasswordDto } from './dtos/reset-password-dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -47,9 +50,9 @@ export class UserController {
     type: Object,
   })
   @ApiResponse({ status: 400, description: 'Invalid input' })
-  async register(@Body() dto: CreateUserDto, @Req() req: CustomRequest) {
+  async register(@Body() dto: CreateUserDto) {
     const user = await this.userService.register(dto);
-    return response('User registered successfully', user);
+    return response('تم التسجيل بنجاح', user);
   }
 
   @Public()
@@ -60,7 +63,7 @@ export class UserController {
   async login(@Body() dto: LoginDto) {
     const deviceToken = dto.fingerprint;
     const user = await this.userService.login(dto, deviceToken);
-    return response('User logged in successfully', user);
+    return response('تم تسجيل الدخول بنجاح', user);
   }
 
   //verfcation user buy send a otp code his gmail
@@ -71,7 +74,53 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'Invalid input' })
   async verifyUser(@Body() dto: VerifyDto) {
     const code = await this.userService.verifyUser(dto);
-    return response('User verified successfully', code);
+    return response('تم ارسال رمز التحقق بنجاح', code);
+  }
+
+  @Public()
+  @Post('logout')
+  @ApiOperation({ summary: 'User logout' })
+  @ApiResponse({ status: 200, description: 'Logout successful', type: Object })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async logout(@Req() req: CustomRequest) {
+    //remove token from cookie
+    req.res?.clearCookie('refreshToken');
+    return response('تم تسجيل الخروج بنجاح');
+  }
+
+  //make forget password
+  @Public()
+  @Post('forget-password')
+  @ApiOperation({ summary: 'Forget password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Forget password successful',
+    type: Object,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  async forgetPassword(@Body() dto: ForgetPasswordDto) {
+    const user = await this.userService.forgetPassword(dto);
+    return response('تم ارسال رابط اعادة تعين كلمة المرور بنجاح', user);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset password successful',
+    type: Object,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Query('token') token: string,
+  ) {
+    if (!token) {
+      throw new BadRequestException('التوكن غير صحيح أو انتهت صلاحيته');
+    }
+    const user = await this.userService.resetPassword(dto, token);
+    return response('تم تغيير كلمة المرور بنجاح', user);
   }
 
   //deposit user wallet balanace by super admin
@@ -89,7 +138,25 @@ export class UserController {
       userIdToDeposit,
       dto,
     );
-    return response('User wallet balance deposited successfully', user);
+    return response('تم ايداع الرصيد بنجاح', user);
+  }
+
+  @Roles(Role.user, Role.admin, Role.super_admin)
+  @Put('password')
+  @ApiOperation({ summary: 'Update user password' })
+  @ApiResponse({
+    status: 200,
+    description: 'User password updated',
+    type: Object,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiBearerAuth()
+  async updateUserPassword(
+    @userPayload() userData: IPayload,
+    @Body() dto: UpdateUserPasswordDto,
+  ) {
+    const user = await this.userService.updateUserPassword(userData.id, dto);
+    return response('تم تغيير كلمة المرور بنجاح', user);
   }
 
   //get user wallet balance by user
@@ -113,7 +180,7 @@ export class UserController {
       page,
       limit,
     );
-    return response('User wallet balance retrieved successfully', userWallet);
+    return response('تم استرجاع رصيد المحفظة بنجاح', userWallet);
   }
 
   @Get()
@@ -122,9 +189,10 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User found', type: Object })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiBearerAuth()
-  async getUser(@userPayload() userData: IPayload) {
+  async getUser(@userPayload() userData: IPayload, @Req() req: CustomRequest) {
+    const refreshToken = req.cookies.refreshToken;
     const user = await this.userService.getUserById(userData.id);
-    return response('User fetched successfully', user);
+    return response('تم استرجاع المستخدم بنجاح', user);
   }
 
   @Patch()
@@ -138,7 +206,7 @@ export class UserController {
     @Body() dto: UpdateUserDto,
   ) {
     const user = await this.userService.updateUser(userData.id, dto);
-    return response('User updated successfully', user);
+    return response('تم تحديث المستخدم بنجاح', user);
   }
 
   @Delete('')
@@ -149,6 +217,17 @@ export class UserController {
   @ApiBearerAuth()
   async deleteUser(@userPayload() userData: IPayload) {
     const user = this.userService.deleteUser(userData.id);
-    return response('User deleted successfully', user);
+    return response('تم حذف المستخدم بنجاح', user);
+  }
+
+  //refresh token
+  @Post('refresh-token')
+  @ApiOperation({ summary: 'Refresh token' })
+  @ApiResponse({ status: 200, description: 'Token refreshed', type: Object })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async refreshToken(@Req() req: CustomRequest) {
+    const refreshToken = req.cookies.refreshToken;
+    const accessToken = await this.userService.refreshToken(refreshToken);
+    return response('تم تحديث التوكن بنجاح', accessToken);
   }
 }
