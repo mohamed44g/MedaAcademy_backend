@@ -7,12 +7,11 @@ import {
   Patch,
   Delete,
   ParseIntPipe,
-  Request,
   Query,
-  Session,
   BadRequestException,
   Req,
   Put,
+  Res,
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dtos/create-user-dto';
@@ -35,6 +34,7 @@ import { VerifyDto } from './dtos/verify-dto';
 import { UpdateUserPasswordDto } from './dtos/update-user-password-dto';
 import { ForgetPasswordDto } from './dtos/forget-password-dto';
 import { ResetPasswordDto } from './dtos/reset-password-dto';
+import { Response } from 'express';
 
 @ApiTags('Users')
 @Controller('users')
@@ -60,9 +60,15 @@ export class UserController {
   @ApiOperation({ summary: 'User login' })
   @ApiResponse({ status: 200, description: 'Login successful', type: Object })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() dto: LoginDto) {
+  async login(@Body() dto: LoginDto, @Res() res: Response) {
     const deviceToken = dto.fingerprint;
     const user = await this.userService.login(dto, deviceToken);
+    res.cookie('refreshToken', user.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return response('تم تسجيل الدخول بنجاح', user);
   }
 
