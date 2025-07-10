@@ -191,6 +191,7 @@ export class UserController {
   @ApiBearerAuth()
   async getUser(@userPayload() userData: IPayload, @Req() req: CustomRequest) {
     const refreshToken = req.cookies.refreshToken;
+    console.log(refreshToken);
     const user = await this.userService.getUserById(userData.id);
     return response('تم استرجاع المستخدم بنجاح', user);
   }
@@ -227,6 +228,7 @@ export class UserController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async refreshToken(@Req() req: CustomRequest) {
     const refreshToken = req.cookies.refreshToken;
+    console.log(refreshToken);
     const accessToken = await this.userService.refreshToken(refreshToken);
     return response('تم تحديث التوكن بنجاح', accessToken);
   }
