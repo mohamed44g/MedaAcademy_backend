@@ -90,7 +90,6 @@ export class UserModel {
     transactions: any[];
     total: number;
   }> {
-    console.log(page);
     const offset = (page - 1) * limit;
 
     // كويري لجلب رصيد المحفظة من جدول users
@@ -150,7 +149,7 @@ export class UserModel {
     return {
       wallet: {
         balance: walletResult[0].wallet_balance,
-        currency: 'دولار',
+        currency: 'شيكل',
       },
       transactions,
       total,

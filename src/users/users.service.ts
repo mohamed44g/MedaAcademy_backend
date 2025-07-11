@@ -23,6 +23,8 @@ import { MongoService } from 'src/database/mongo.service';
 import { UpdateUserPasswordDto } from './dtos/update-user-password-dto';
 import { ForgetPasswordDto } from './dtos/forget-password-dto';
 import { ResetPasswordDto } from './dtos/reset-password-dto';
+import { config } from 'dotenv';
+config();
 
 @Injectable()
 export class UserService {
