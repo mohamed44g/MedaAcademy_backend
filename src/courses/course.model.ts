@@ -214,7 +214,6 @@ export class CourseModel {
       isenrolled: course.is_enrolled,
       speciality: course.speciality || [],
     }));
-    console.log('formattedCourses', formattedCourses);
     return { data: formattedCourses, total };
   }
 
@@ -233,8 +232,8 @@ export class CourseModel {
     LEFT JOIN user_courses uc ON c.id = uc.course_id AND uc.user_id = $1
     LEFT JOIN specialties s ON c.specialty_id = s.id
     GROUP BY c.id, c.title, c.description, c.specialty_id, c.poster, c.price, uc.user_id
-    ORDER BY c.created_at DESC
-    LIMIT 6
+    ORDER BY c.created_at
+    LIMIT 9
 `;
 
     const courses = await this.dbService.query(query, [userId]);
@@ -330,8 +329,8 @@ export class CourseModel {
       price: course.price,
       poster: course.poster,
       sections: {
-        midterm: { title: 'جزء midterm', chapters: [] },
-        final: { title: 'جزء final', chapters: [] },
+        midterm: { title: 'midterm', chapters: [] },
+        final: { title: 'final', chapters: [] },
       },
     };
 
@@ -454,13 +453,13 @@ export class CourseModel {
       poster: course.poster,
       sections: {
         midterm: {
-          title: 'جزء midterm',
-          description: 'المفاهيم الأساسية',
+          title: 'midterm',
+          description: '',
           chapters: [],
         },
         final: {
-          title: 'جزء final',
-          description: 'التطبيقات العملية المتقدمة',
+          title: 'final',
+          description: '',
           chapters: [],
         },
       },

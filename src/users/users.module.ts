@@ -11,15 +11,22 @@ import { MongoService } from 'src/database/mongo.service';
   imports: [
     MailerModule.forRoot({
       transport: {
-        host: 'pro.turbo-smtp.com',
+        host: 'smtp.hostinger.com',
         port: 587,
         auth: {
-          user: 'medaplus56@gmail.com ',
-          pass: 'd38DEmuW',
+          user: 'medaplusacademy@med-aplus.com',
+          pass: '#159357Ays',
         },
       },
       defaults: {
-        from: 'Med A+ Academy <medaplus56@gmail.com>',
+        from: 'Med A+ Academy <medaplusacademy@med-aplus.com>',
+      },
+      template: {
+        dir: __dirname + '/templates',
+        adapter: new HandlebarsAdapter(),
+        options: {
+          strict: true,
+        },
       },
     }),
   ],

@@ -105,8 +105,8 @@ export class CourseController {
     @Param('id', ParseIntPipe) id: number,
     @userPayload() userData: IPayload,
   ) {
-    const isEnrolled = userData.id
-      ? await this.courseService.isUserEnrolled(userData.id, id)
+    const isEnrolled = userData?.id
+      ? await this.courseService.isUserEnrolled(userData?.id, id)
       : false;
     const course = await this.courseService.findCourseById(id);
     return response('Course retrieved successfully', {

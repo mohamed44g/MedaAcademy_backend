@@ -31,22 +31,13 @@ export class CreateCourseDto {
   @Transform(({ value }) => parseInt(value, 10))
   specialty_id: number;
 
-  @ApiProperty({
-    type: 'string',
-    format: 'binary',
-    description: 'must be an image file',
-    required: true,
-    name: 'poster',
-  })
-  poster: Express.Multer.File;
-
   //instractor
   @ApiProperty({
     description: 'Instractor name',
-    example: 'Dr. John Doe',
+    example: '1',
     required: true,
     name: 'instractor_id',
-    type: 'string',
+    type: 'number',
   })
   @IsNumber()
   @IsNotEmpty()

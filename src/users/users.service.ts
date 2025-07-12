@@ -23,6 +23,8 @@ import { MongoService } from 'src/database/mongo.service';
 import { UpdateUserPasswordDto } from './dtos/update-user-password-dto';
 import { ForgetPasswordDto } from './dtos/forget-password-dto';
 import { ResetPasswordDto } from './dtos/reset-password-dto';
+import * as fs from 'fs';
+import * as handlebars from 'handlebars';
 import { config } from 'dotenv';
 config();
 
@@ -40,11 +42,18 @@ export class UserService {
     email: string,
     code: string,
   ): Promise<void> {
+    const templateSource = fs.readFileSync(
+      'src/templates/verification-email.html',
+      'utf-8',
+    );
+    const template = handlebars.compile(templateSource);
+    const html = template({ verificationCode: code });
+
     await this.mailerService.sendMail({
       to: email,
-      from: 'Med A+ Academy <medaplus56@gmail.com>',
-      subject: 'Testing Nest Mailermodule with template ✔',
-      html: 'هذا كود التحقق من حسابك ' + code,
+      from: 'Med A+ Academy <medaplusacademy@med-aplus.com>',
+      subject: 'كود تفعيل حسابك في أكاديمية +MEDA',
+      html: html,
     });
   }
 
@@ -74,10 +83,7 @@ export class UserService {
       throw new UnauthorizedException('الايميل او كلمة السر غير صحيحة');
     }
 
-    // Get user sessions
     const userSessions = await this.userModel.getUserSessions(user.id);
-
-    // Check for a matching session
     let isMatch = false;
     for (const session of userSessions) {
       if (
@@ -88,7 +94,6 @@ export class UserService {
       }
     }
 
-    // If no match, handle based on session count
     if (!isMatch) {
       if (userSessions.length != 2) {
         await this.userModel.addUserSession(user.id, deviceToken);
@@ -99,7 +104,6 @@ export class UserService {
       }
     }
 
-    // Generate JWT
     const payload: IPayload = {
       id: user.id,
       email: user.email,
@@ -189,7 +193,6 @@ export class UserService {
       throw new NotFoundException('المستخدم غير موجود.');
     }
 
-    //compare old password
     const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
     if (!isMatch) {
       throw new BadRequestException('كلمة المرور القديمة غير صحيحة.');
@@ -199,7 +202,6 @@ export class UserService {
     return this.userModel.updateUserPassword(id, password);
   }
 
-  //make with token send to user email and redirect to reset password page
   async forgetPassword(dto: ForgetPasswordDto): Promise<boolean> {
     const user = await this.userModel.findUserByEmail(dto.email);
     if (!user) {
@@ -209,15 +211,22 @@ export class UserService {
       { id: user.id, email: user.email },
       {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: '1h',
+        expiresIn: '10m',
       },
     );
+    const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
+    const templateSource = fs.readFileSync(
+      'src/templates/forget-password-email.html',
+      'utf-8',
+    );
+    const template = handlebars.compile(templateSource);
+    const html = template({ resetLink });
+
     await this.mailerService.sendMail({
       to: user.email,
-      from: 'Med A+ Academy <medaplus56@gmail.com>',
-      subject: 'Reset Password',
-      text: 'Reset Password ',
-      html: `the link to reset your password is : ${process.env.FRONTEND_URL}/reset-password?token=${token} valid for 1 hour`,
+      from: 'Med A+ Academy <medaplusacademy@med-aplus.com>',
+      subject: 'إعادة تعيين كلمة المرور',
+      html: html,
     });
     return true;
   }
@@ -227,23 +236,21 @@ export class UserService {
     if (!payload) {
       throw new UnauthorizedException('التوكن غير صحيح أو انتهت صلاحيته');
     }
-    const user = await this.userModel.getUserById(payload.id);
+    const user = await this.userModel.getUserById(payload['id']);
     if (!user) {
       throw new NotFoundException('المستخدم غير موجود.');
     }
     const password = await bcrypt.hash(dto.password, 10);
-    return this.userModel.updateUserPassword(payload.id, password);
+    return this.userModel.updateUserPassword(payload['id'], password);
   }
 
   async refreshToken(token: string): Promise<string> {
-    console.log(token);
     const payload = this.jwtService.decode(token);
     if (!payload) {
       throw new UnauthorizedException('التوكن غير صحيح أو انتهت صلاحيته');
     }
-    // generate new token
     const accessToken = this.jwtService.sign(
-      { id: payload.id, email: payload.email },
+      { id: payload['id'], email: payload['email'] },
       {
         secret: this.configService.get<string>('JWT_SECRET'),
         expiresIn: '1d',
